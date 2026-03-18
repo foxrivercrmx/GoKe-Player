@@ -1,0 +1,14 @@
+ body {
+     background-color: #111827;
+     color: #f3f4f6;
+ }
+
+ /* Efek glow buat tombol aktif */
+ .btn-glow {
+     box-shadow: 0 0 10px #ec4899;
+ }
+
+ /* Sembunyikan scrollbar tapi tetap bisa scroll */
+ ::-webkit-scrollbar {
+     display: none;
+ }

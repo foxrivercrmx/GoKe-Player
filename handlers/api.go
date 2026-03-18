@@ -77,28 +77,19 @@ func AddToQueue(c *fiber.Ctx) error {
 	var playingCount int64
 	database.DB.Model(&models.Queue{}).Where("status = ?", "playing").Count(&playingCount)
 
-	// Kalau lagi kosong, statusnya langsung 'playing'. Kalau ada, antri 'waiting'
-	status := "waiting"
-	if playingCount == 0 {
-		status = "playing"
-	}
-
-	queue := models.Queue{SongID: req.SongID, Status: status}
+	// WAJIB jadikan "waiting" dulu, biarin ProcessNextSong yang mikir
+	queue := models.Queue{SongID: req.SongID, Status: "waiting"}
 	database.DB.Create(&queue)
 	database.DB.Preload("Song").First(&queue, queue.ID)
-
-	// Kalau dia statusnya playing, langsung teriak ke STB buat auto-play!
-	if status == "playing" {
-		Broadcast <- map[string]interface{}{
-			"action": "PLAY_SONG",
-			"url":    "/video/" + filepath.Base(queue.Song.FilePath),
-			"title":  queue.Song.Artist + " - " + queue.Song.Title,
-		}
-	}
 
 	// Tetap kasih tau HP kalau antrian update
 	Broadcast <- map[string]interface{}{
 		"action": "QUEUE_UPDATED",
+	}
+
+	// Kalau lagi nggak ada yang muter, panggil ProcessNextSong buat ngeksekusi
+	if playingCount == 0 {
+		go ProcessNextSong()
 	}
 
 	return c.JSON(fiber.Map{"message": "Masuk antrian!", "queue": queue})

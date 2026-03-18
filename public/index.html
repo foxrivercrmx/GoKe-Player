@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoKe Remote</title>
+    <link rel="icon" type="image/webp" href="/img/favicon.webp">
+    <link rel="icon" type="image/webp" sizes="32x32" href="/img/favicon-32x32.webp">
+    <link rel="icon" type="image/webp" sizes="16x16" href="/img/favicon-16x16.ico">
+    <link rel="apple-touch-icon" type="image/png" sizes="180x180" href="/img/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.json">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #111827; color: #f3f4f6; }
+        /* Efek glow buat tombol aktif */
+        .btn-glow { box-shadow: 0 0 10px #ec4899; }
+        /* Sembunyikan scrollbar tapi tetap bisa scroll */
+        ::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="font-sans antialiased pb-24">
+
+    <header class="flex justify-between items-center sticky top-0 z-50 bg-gray-900 bg-opacity-90 backdrop-blur-md border-b border-gray-800 p-4 shadow-lg">
+        <h1 class="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-500">
+            <img src="https://ik.imagekit.io/denxbluemonday/tr:w-52,f-webp,q-80/goke-player/logo.png" alt="🎤" class="inline"/> GOKE REMOTE
+        </h1>
+        <button onclick="openSettings()" class="text-2xl p-2 bg-gray-800 rounded-full hover:bg-gray-700 transition shadow-sm border border-gray-700">
+            ⚙️
+        </button>
+    </header>
+
+    <main class="p-4 max-w-md mx-auto">
+        
+        <div class="mb-5 space-y-3">
+            <div class="flex gap-2">
+                <button id="tabLocal" onclick="switchMode('local')" class="flex-1 py-2 rounded-lg font-bold bg-pink-600 text-white shadow-md transition">
+                    📁 Lokal
+                </button>
+                <button id="tabYT" onclick="switchMode('youtube')" class="flex-1 py-2 rounded-lg font-bold bg-gray-800 text-gray-400 border border-gray-700 transition">
+                    🔴 YouTube
+                </button>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="scanLibrary()" id="btnScan" class="flex-1 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-bold shadow-md transition text-sm">
+                    🔄 Scan Lokal
+                </button>
+                <button onclick="scanAList()" id="btnScanAList" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-md transition text-sm">
+                    ☁️ Scan AList
+                </button>
+                <button onclick="clearQueueBtn()" class="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold shadow-md transition text-sm">
+                    🗑️ Hapus Antrian
+                </button>
+            </div>
+
+            <div class="relative w-full">
+                <input type="text" id="searchInput" placeholder="Cari penyanyi atau judul lagu lokal..." 
+                    class="w-full bg-gray-800 text-white border border-gray-700 rounded-xl py-3 px-4 pr-12 outline-none focus:ring-2 focus:ring-pink-500 transition">
+                <button onclick="executeSearch()" class="absolute right-2 top-1.5 bg-pink-600 hover:bg-pink-700 rounded-lg p-2 transition">
+                    🔍
+                </button>
+            </div>
+        </div>
+
+        <div>
+            <h2 class="text-lg font-bold text-gray-400 mb-3 uppercase tracking-wide text-sm">Daftar Lagu</h2>
+            <div id="songList" class="space-y-3">
+                <p class="text-center text-gray-500 italic">Memuat lagu...</p>
+            </div>
+            <div id="loadMoreContainer" class="text-center hidden mb-8">
+            <button onclick="loadMoreSongs()" class="bg-gray-700 hover:bg-gray-600 text-white py-2 px-6 rounded-full text-sm font-bold shadow-md transition-colors">
+                ⏬ Muat Lebih Banyak
+            </button>
+        </div>
+        </div>
+
+        <div class="mt-8 border-t border-gray-800 pt-6">
+            <h2 class="text-lg font-bold text-gray-400 mb-3 uppercase tracking-wide text-sm">Antrian Saat Ini</h2>
+            <div id="queueList" class="space-y-2">
+                </div>
+        </div>
+    </main>
+
+    <div class="fixed bottom-0 left-0 w-full bg-gray-900 border-t border-gray-800 p-4 pb-safe flex justify-around items-center z-50 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.5)]">
+        <button onclick="sendCommand('PAUSE')" class="text-2xl p-3 bg-gray-800 rounded-full hover:bg-gray-700 transition">⏸️</button>
+        <button onclick="sendCommand('RESUME')" class="text-3xl p-4 bg-gradient-to-r from-pink-500 to-violet-600 rounded-full btn-glow hover:scale-105 transition-transform text-white">▶️</button>
+        <button onclick="sendCommand('STOP')" class="text-2xl p-3 bg-gray-800 rounded-full hover:bg-gray-700 transition">⏹️</button>
+        <button onclick="sendCommand('NEXT')" class="text-2xl p-3 bg-gray-800 rounded-full hover:bg-gray-700 transition">⏭️</button>
+    </div>
+
+    <div id="settingsModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center bg-black bg-opacity-80 backdrop-blur-sm px-4">
+        <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-md shadow-2xl transition-all">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-pink-400">⚙️ Pengaturan Player</h2>
+                <button onclick="closeSettings()" class="text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
+            </div>
+            
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Resolusi Video (YouTube/AList)</label>
+                    <select id="configRes" class="w-full bg-gray-800 text-white border border-gray-700 rounded-lg p-3 outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                        <option value="480">480p (Paling Ringan)</option>
+                        <option value="720">720p (Standar STB B860H)</option>
+                        <option value="1080">1080p (HD)</option>
+                        <option value="best">Best (Kualitas Maksimal)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Prioritas Codec Video</label>
+                    <select id="configCodec" class="w-full bg-gray-800 text-white border border-gray-700 rounded-lg p-3 outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                        <option value="h264">H.264 / AVC (Aman buat TV)</option>
+                        <option value="hevc">H.265 / HEVC (Hemat Storage)</option>
+                        <option value="vp9">VP9 (Lancar di PC)</option>
+                        <option value="best">Best (Otomatis)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="pt-4 border-t border-gray-700">
+                <h3 class="text-lg font-bold text-violet-400 mb-3">☁️ Pengaturan AList</h3>
+                
+                <div class="mb-3">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">URL Server AList</label>
+                    <input type="text" id="configAListURL" placeholder="http://192.168.x.x:5244" class="w-full bg-gray-800 text-white border border-gray-700 rounded-lg p-3 outline-none focus:ring-2 focus:ring-violet-500 transition">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Path Folder Karaoke (di AList)</label>
+                    <input type="text" id="configAListPath" placeholder="/GoogleDrive/Karaoke" class="w-full bg-gray-800 text-white border border-gray-700 rounded-lg p-3 outline-none focus:ring-2 focus:ring-violet-500 transition">
+                </div>
+            </div>
+
+            <div class="pt-4 border-t border-gray-700 mt-2">
+                <h3 class="text-sm font-bold text-red-500 mb-2">⚠️ Zona Bahaya</h3>
+                <button onclick="clearSongsBtn()" class="w-full py-2 bg-red-900 hover:bg-red-800 text-red-100 rounded-lg font-bold border border-red-700 transition text-sm">
+                    🗑️ Hapus Semua Daftar Lagu (Scan)
+                </button>
+            </div>
+
+            <div class="mt-8 flex justify-end gap-3">
+                <button onclick="closeSettings()" class="px-5 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-white transition font-semibold border border-gray-700">Batal</button>
+                <button onclick="saveSettings()" class="px-5 py-2 bg-gradient-to-r from-pink-600 to-violet-600 hover:from-pink-500 hover:to-violet-500 rounded-lg text-white font-bold transition shadow-lg">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const host = window.location.host;
+        let ws;
+
+        // Inisialisasi awal
+        document.addEventListener('DOMContentLoaded', () => {
+            connectWebSocket();
+            fetchSongs();
+            fetchQueue();
+        });
+
+        // 1. Setup WebSocket buat interaksi langsung ke Player
+        function connectWebSocket() {
+            ws = new WebSocket(`ws://${host}/ws?type=remote`);
+            
+            ws.onopen = () => console.log('✅ Remote terhubung ke Server');
+            
+            ws.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                // Kalau ada update antrian dari user lain, refresh list
+                if (msg.action === 'QUEUE_UPDATED') {
+                    fetchQueue();
+                }
+            };
+
+            ws.onclose = () => {
+                console.log('❌ Terputus dari server, mencoba reconnect...');
+                setTimeout(connectWebSocket, 3000);
+            };
+        }
+
+        // 2. Fungsi Kirim Perintah ke Player (TV)
+        function sendCommand(action) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ action: action }));
+                console.log(`📡 Perintah dikirim: ${action}`);
+            } else {
+                alert("Belum terhubung ke server!");
+            }
+        }
+
+        // 3. Ambil data lagu dari API
+        // Variabel global buat nginget posisi halaman dan kata kunci pencarian
+        let currentLocalPage = 1;
+        let currentLocalQuery = '';
+
+        // Fungsi fetchSongs yang udah di-upgrade
+        async function fetchSongs(query = '', append = false) {
+            // Kalau bukan 'load more' (pencarian baru atau awal buka), reset ke halaman 1
+            if (!append) {
+                currentLocalPage = 1;
+                currentLocalQuery = query;
+                document.getElementById('songList').innerHTML = '<div class="text-center py-4"><div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-pink-500 mx-auto mb-2"></div><p class="text-pink-400 text-sm">Memuat lagu...</p></div>';
+            }
+
+            try {
+                // Panggil API dengan parameter halaman
+                const res = await fetch(`/api/songs?q=${currentLocalQuery}&page=${currentLocalPage}`);
+                const data = await res.json();
+                
+                const container = document.getElementById('songList');
+                const loadMoreBtn = document.getElementById('loadMoreContainer');
+
+                // Kalau pencarian baru, kosongin list lama
+                if (!append) container.innerHTML = '';
+
+                // Kalau datanya kosong
+                if (!data.data || data.data.length === 0) {
+                    if (!append) container.innerHTML = '<p class="text-center text-gray-500 italic py-4">Belum ada lagu. Coba scan dulu Kang!</p>';
+                    loadMoreBtn.classList.add('hidden');
+                    return;
+                }
+
+                // Render lagunya
+                data.data.forEach(song => {
+                    const div = document.createElement('div');
+                    div.className = "flex justify-between items-center p-3 bg-gray-800 rounded-xl shadow-sm border border-gray-700";
+                    
+                    // Bikin label pembeda biar tahu ini lagu Lokal atau AList
+                    const isAList = song.file_path.startsWith('alist://');
+                    const badge = isAList 
+                        ? '<span class="bg-blue-600 text-[10px] px-1.5 py-0.5 rounded text-white ml-2 align-middle">☁️ AList</span>' 
+                        : '<span class="bg-pink-600 text-[10px] px-1.5 py-0.5 rounded text-white ml-2 align-middle">📁 Lokal</span>';
+
+                    div.innerHTML = `
+                        <div class="flex-1 min-w-0 pr-4">
+                            <h3 class="font-bold text-white truncate text-sm mb-0.5">${escapeHtml(song.title)}</h3>
+                            <p class="text-xs text-gray-400 truncate">${escapeHtml(song.artist)} ${badge}</p>
+                        </div>
+                        <button onclick="addToQueue(${song.ID})" class="bg-pink-600 hover:bg-pink-500 text-white font-bold h-10 px-3 rounded-lg transition-colors text-xs whitespace-nowrap flex-shrink-0 shadow-md">
+                            + Antri
+                        </button>
+                    `;
+                    container.appendChild(div);
+                });
+
+                // Cek apakah masih ada sisa halaman? Kalau ada, munculin tombolnya
+                if (currentLocalPage < data.total_pages) {
+                    loadMoreBtn.classList.remove('hidden');
+                } else {
+                    loadMoreBtn.classList.add('hidden');
+                }
+
+            } catch (err) {
+                console.error(err);
+                if (!append) document.getElementById('songList').innerHTML = '<p class="text-center text-red-500 italic py-4">Gagal mengambil data lagu.</p>';
+            }
+        }
+
+        // Fungsi pemicu saat tombol "Muat Lebih Banyak" dipencet
+        function loadMoreSongs() {
+            currentLocalPage++;
+            fetchSongs(currentLocalQuery, true); // true = mode 'append' (tambahin ke bawah list)
+        }
+
+        // 4. Render list lagu ke HTML
+        function renderSongs(songs) {
+            const container = document.getElementById('songList');
+            container.innerHTML = '';
+
+            if (!songs || songs.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500 italic">Lagu tidak ditemukan. Udah di-scan belum?</p>';
+                return;
+            }
+
+            songs.forEach(song => {
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center p-4 bg-gray-800 rounded-xl shadow-sm border border-gray-700";
+                div.innerHTML = `
+                    <div class="flex-1 truncate pr-4">
+                        <h3 class="font-bold text-white truncate">${song.title}</h3>
+                        <p class="text-sm text-gray-400 truncate">${song.artist}</p>
+                    </div>
+                    <button onclick="addToQueue(${song.ID})" class="bg-pink-600 hover:bg-pink-500 text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm">
+                        + Antri
+                    </button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // 5. Tambah ke Antrian via API
+        async function addToQueue(songId) {
+            try {
+                const res = await fetch('/api/queue', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ song_id: songId })
+                });
+                
+                if (res.ok) {
+                    // Berhasil masuk antrian!
+                    // Notifikasi visual (opsional) atau langsung refresh queue
+                    fetchQueue();
+                } else {
+                    alert("Gagal menambahkan ke antrian");
+                }
+            } catch (err) {
+                console.error("Error queue:", err);
+            }
+        }
+
+        // 6. Ambil status antrian saat ini
+        async function fetchQueue() {
+            try {
+                const res = await fetch('/api/queue');
+                const queues = await res.json();
+                renderQueue(queues);
+            } catch (err) {
+                console.error("Gagal ambil antrian", err);
+            }
+        }
+
+        // 7. Render list antrian ke HTML
+        function renderQueue(queues) {
+            const container = document.getElementById('queueList');
+            container.innerHTML = '';
+
+            if (!queues || queues.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500 text-sm italic py-2">Antrian kosong. Ayo pilih lagu!</p>';
+                return;
+            }
+
+            queues.forEach((q, index) => {
+                const div = document.createElement('div');
+                // Kasih warna beda buat lagu yang lagi "playing" (index 0 / status tertentu)
+                const isPlaying = q.status === 'playing' || index === 0; 
+                div.className = `flex justify-between items-center p-3 rounded-lg border ${isPlaying ? 'bg-pink-900 bg-opacity-30 border-pink-700' : 'bg-gray-800 border-gray-700'}`;
+                div.innerHTML = `
+                    <div class="flex items-center space-x-3 truncate">
+                        <span class="${isPlaying ? 'text-pink-400' : 'text-gray-500'} font-bold w-6 text-center">${index + 1}</span>
+                        <div class="truncate">
+                            <p class="font-semibold text-white truncate text-sm">${q.song.title}</p>
+                            <p class="text-xs text-gray-400 truncate">${q.song.artist}</p>
+                        </div>
+                    </div>
+                    ${isPlaying ? '<span class="text-xs bg-pink-600 text-white px-2 py-1 rounded">Main</span>' : ''}
+                `;
+                container.appendChild(div);
+            });
+        }
+        // 8. Fungsi buat trigger Scan ke Server Debian
+        async function scanLibrary() {
+            const btn = document.getElementById('btnScan');
+            const originalText = btn.innerHTML;
+            
+            // Ubah tampilan tombol biar kelihatan lagi loading
+            btn.innerHTML = "⏳ Wait...";
+            btn.disabled = true;
+            btn.classList.add("opacity-50", "cursor-not-allowed");
+
+            try {
+                const res = await fetch('/api/scan', { method: 'POST' });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    alert(`Scan beres Kang! Nemu ${data.added} lagu baru.`);
+                    // Langsung refresh list lagu biar yang baru muncul
+                    fetchSongs(document.getElementById('searchInput').value); 
+                } else {
+                    alert("Waduh, gagal scan: " + (data.error || "Error tidak diketahui"));
+                }
+            } catch (err) {
+                console.error("Error pas scan:", err);
+                alert("Gagal menghubungi server Debian buat scan.");
+            } finally {
+                // Balikin tombol ke semula
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                btn.classList.remove("opacity-50", "cursor-not-allowed");
+            }
+        }
+
+        // 9. Logika UI Pengaturan (Settings Modal)
+        const settingsModal = document.getElementById('settingsModal');
+        
+        // Pas modal dibuka, langsung narik data konfigurasi terbaru dari Debian
+        async function openSettings() {
+            settingsModal.classList.remove('hidden');
+            try {
+                const res = await fetch('/api/config');
+                const config = await res.json();
+                if (config) {
+                    document.getElementById('configRes').value = config.resolution || '720';
+                    document.getElementById('configCodec').value = config.codec || 'h264';
+                    document.getElementById('configAListURL').value = config.alist_url || 'http://127.0.0.1:5244';
+                    document.getElementById('configAListPath').value = config.alist_path || '/';
+                }
+            } catch (err) {
+                console.error("Gagal memuat pengaturan:", err);
+            }
+        }
+
+        // Nutup modal
+        function closeSettings() {
+            settingsModal.classList.add('hidden');
+        }
+
+        // Pas tombol Simpan dipencet, kirim update ke backend
+        async function saveSettings() {
+            const resVal = document.getElementById('configRes').value;
+            const codecVal = document.getElementById('configCodec').value;
+            const alistUrlVal = document.getElementById('configAListURL').value;
+            const alistPathVal = document.getElementById('configAListPath').value;
+
+            try {
+                const res = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        resolution: resVal, 
+                        codec: codecVal,
+                        alist_url: alistUrlVal,
+                        alist_path: alistPathVal
+                    })
+                });
+                
+                if (res.ok) {
+                    alert("Mantap! Pengaturan berhasil disimpan.");
+                    closeSettings();
+                } else {
+                    alert("Waduh, gagal menyimpan pengaturan.");
+                }
+            } catch (err) {
+                console.error("Error save config:", err);
+                alert("Terjadi kesalahan saat menghubungi server.");
+            }
+        }
+
+        let currentMode = 'local';
+
+        // Fungsi buat gonta-ganti tampilan tab
+        function switchMode(mode) {
+            currentMode = mode;
+            const tabLocal = document.getElementById('tabLocal');
+            const tabYT = document.getElementById('tabYT');
+            const input = document.getElementById('searchInput');
+            const btnScan = document.getElementById('btnScan');
+            const btnAlist = document.getElementById('btnScanAList');
+
+            if (mode === 'local') {
+                tabLocal.className = "flex-1 py-2 rounded-lg font-bold bg-pink-600 text-white shadow-md transition";
+                tabYT.className = "flex-1 py-2 rounded-lg font-bold bg-gray-800 text-gray-400 border border-gray-700 transition";
+                input.placeholder = "Cari penyanyi atau judul lagu lokal...";
+                btnScan.classList.remove('hidden'); // Tunjukin tombol scan
+                btnAlist.classList.remove('hidden');
+                fetchSongs(); // Reset list ke lokal
+            } else {
+                tabYT.className = "flex-1 py-2 rounded-lg font-bold bg-red-600 text-white shadow-md transition";
+                tabLocal.className = "flex-1 py-2 rounded-lg font-bold bg-gray-800 text-gray-400 border border-gray-700 transition";
+                input.placeholder = "Ketik pencarian di YouTube...";
+                btnScan.classList.add('hidden'); // Sembunyiin scan kalau lagi mode YT
+                btnAlist.classList.add('hidden');
+                document.getElementById('songList').innerHTML = '<p class="text-center text-gray-500 italic">Ketik judul lalu tekan 🔍</p>';
+            }
+        }
+
+        // Fungsi jembatan pas tombol 🔍 dipencet atau enter
+        function executeSearch() {
+            const query = document.getElementById('searchInput').value;
+            if (currentMode === 'local') {
+                fetchSongs(query);
+            } else {
+                if (!query) return alert("Ketik dulu lagunya Kang!");
+                searchYouTube(query);
+            }
+        }
+
+        // Ganti event listener enter yang lama jadi ini
+        document.getElementById('searchInput').addEventListener('keyup', (e) => {
+            if(e.key === 'Enter') executeSearch();
+        });
+
+        // Nge-hit API YouTube yang baru kita bikin di Go
+        async function searchYouTube(query) {
+            const container = document.getElementById('songList');
+            
+            // Loading Spinner yang lebih jelas biar gak dikira error
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-10">
+                    <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500 mb-4"></div>
+                    <p class="text-pink-400 font-bold animate-pulse">Sabar Kang, lagi nyari di YouTube...</p>
+                </div>
+            `;
+            
+            try {
+                const res = await fetch(`/api/youtube/search?q=${query}`);
+                
+                // Cek kalau server ngasih respon error (misal 404 atau 500)
+                if (!res.ok) {
+                    throw new Error(`Server membalas dengan status: ${res.status}`);
+                }
+
+                const songs = await res.json();
+                container.innerHTML = '';
+                
+                if (!songs || songs.length === 0) {
+                    container.innerHTML = '<p class="text-center text-gray-500 italic">Waduh, nggak nemu di YouTube.</p>';
+                    return;
+                }
+
+                songs.forEach(song => {
+                    const div = document.createElement('div');
+                    // Layout baru: Grid/Flex biar rapi ada gambar, teks, dan tombol
+                    div.className = "flex items-center gap-4 p-3 bg-gray-800 rounded-xl shadow-sm border border-red-900";
+                    
+                    // Siapin fallback image kalau thumbnail gagal dimuat
+                    const thumbImg = song.thumbnail ? song.thumbnail : 'https://via.placeholder.com/120x90.png?text=No+Image';
+                    const safeTitle = escapeHtml(song.title);
+                    const safeArtist = escapeHtml(song.artist);
+
+                    div.innerHTML = `
+                        <div class="w-24 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-black relative border border-gray-700">
+                            <img src="${thumbImg}" class="w-full h-full object-cover" alt="Thumbnail">
+                            <div class="absolute bottom-0 right-0 bg-red-600 text-white text-[10px] px-1 font-bold">YT</div>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="font-bold text-white truncate text-sm leading-tight mb-1">${safeTitle}</h3>
+                            <p class="text-xs text-gray-400 truncate text-red-400">${safeArtist}</p>
+                        </div>
+                        <button onclick="queueYouTube('${song.id}', '${safeTitle}', '${safeArtist}')" class="bg-red-600 hover:bg-red-500 text-white font-bold h-10 px-3 rounded-lg transition-colors text-xs whitespace-nowrap flex-shrink-0">
+                            + Add
+                        </button>
+                    `;
+                    container.appendChild(div);
+                });
+            } catch (err) {
+                console.error("Error pas search YT:", err);
+                container.innerHTML = '<p class="text-center text-red-500 italic mt-4">Gagal terhubung ke server atau pencarian error.</p>';
+            }
+        }
+
+        // Fungsi pembantu biar judul lagu yang ada tanda kutipnya gak bikin error HTML
+        function escapeHtml(text) {
+            return (text || '').toString()
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Fungsi buat masukin lagu YT ke database dan antrian
+        async function queueYouTube(id, title, artist) {
+            try {
+                const res = await fetch('/api/youtube/queue', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: id, title: title, artist: artist })
+                });
+                
+                if (res.ok) {
+                    // Refresh list antrian di layar HP
+                    fetchQueue();
+                } else {
+                    alert("Waduh, gagal masukin lagu YouTube ke antrian.");
+                }
+            } catch (err) {
+                console.error("Error queue YT:", err);
+                alert("Gagal terhubung ke server.");
+            }
+        }
+
+        async function scanAList() {
+            const btn = document.getElementById('btnScanAList');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "⏳ Wait...";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/alist/scan', { method: 'POST' });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    alert(`Mantap! Nemu ${data.added} lagu baru dari AList.`);
+                    fetchSongs(document.getElementById('searchInput').value); 
+                } else {
+                    alert("Gagal scan AList: " + (data.error || "Error tidak diketahui"));
+                }
+            } catch (err) {
+                alert("Gagal menghubungi server Debian.");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // Fungsi JS buat Hapus Antrian
+        async function clearQueueBtn() {
+            if(!confirm("Yakin mau bersihin semua antrian? STB bakal berhenti muter loh.")) return;
+            try {
+                const res = await fetch('/api/queue/clear', { method: 'DELETE' });
+                if(res.ok) {
+                    fetchQueue(); // Refresh layar HP
+                }
+            } catch(err) {
+                console.error(err);
+                alert("Gagal menghubungi server.");
+            }
+        }
+
+        // Fungsi JS buat Hapus Database Lagu
+        async function clearSongsBtn() {
+            if(!confirm("⚠️ YAKIN KANG? Semua database lagu lokal & AList bakal kehapus!")) return;
+            try {
+                const res = await fetch('/api/songs/clear', { method: 'DELETE' });
+                if(res.ok) {
+                    alert("Database udah bersih dari sisa-sisa kenangan Kang! 🧹");
+                    fetchSongs(); // Kosongin list di layar
+                    fetchQueue();
+                    closeSettings(); // Tutup modalnya
+                }
+            } catch(err) {
+                console.error(err);
+                alert("Gagal menghapus database.");
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoKe Player - TV</title>
+    <link rel="icon" type="image/webp" href="/img/favicon.webp">
+    <link rel="icon" type="image/webp" sizes="32x32" href="/img/favicon-32x32.webp">
+    <link rel="icon" type="image/webp" sizes="16x16" href="/img/favicon-16x16.ico">
+    <link rel="apple-touch-icon" type="image/png" sizes="180x180" href="/img/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.json">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Sembunyikan scrollbar biar rapi di TV */
+        ::-webkit-scrollbar { display: none; }
+        body { margin: 0; overflow: hidden; background-color: #000; color: white; }
+        
+        /* Animasi teks neon pas lagi nunggu lagu */
+        .neon-text {
+            text-shadow: 0 0 10px #ff00de, 0 0 20px #ff00de, 0 0 40px #ff00de;
+            animation: pulsate 1.5s infinite alternate;
+        }
+        @keyframes pulsate {
+            100% { text-shadow: 0 0 4px #ff00de, 0 0 11px #ff00de, 0 0 19px #ff00de, 0 0 40px #ff00de; }
+            0% { text-shadow: 0 0 2px #ff00de, 0 0 4px #ff00de, 0 0 6px #ff00de, 0 0 10px #ff00de; }
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col items-center justify-center relative font-sans">
+
+    <div id="start-overlay" class="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90 cursor-pointer" onclick="initPlayer()">
+        <h1 class="text-4xl font-bold neon-text">Klik OK / Enter di Remote STB untuk Mulai</h1>
+    </div>
+
+    <div id="idle-screen" class="absolute inset-0 flex flex-col items-center justify-center hidden bg-gray-900 bg-opacity-80 z-10">
+        <h1 class="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-500 mb-4">GOKE PLAYER</h1>
+        <p class="text-2xl text-gray-300">Pilih lagu dari HP akang...</p>
+        
+        <div id="up-next" class="mt-8 p-4 bg-white bg-opacity-10 rounded-xl backdrop-blur-md hidden">
+            <p class="text-sm text-pink-400 font-bold uppercase tracking-widest mb-1">Selanjutnya</p>
+            <p id="next-title" class="text-xl font-semibold">Memuat...</p>
+        </div>
+    </div>
+
+    <video id="video-player" class="w-full h-full object-cover hidden"></video>
+
+    <div id="now-playing" class="absolute bottom-10 left-10 p-4 bg-black bg-opacity-60 rounded-xl backdrop-blur-sm hidden transition-opacity duration-500 z-20">
+        <p class="text-sm text-green-400 font-bold uppercase tracking-widest mb-1">🎵 Sedang Diputar</p>
+        <p id="current-title" class="text-2xl font-bold">Judul Lagu</p>
+    </div>
+
+    <script>
+        const video = document.getElementById('video-player');
+        const idleScreen = document.getElementById('idle-screen');
+        const startOverlay = document.getElementById('start-overlay');
+        const nowPlaying = document.getElementById('now-playing');
+        const currentTitle = document.getElementById('current-title');
+        
+        let ws;
+
+        // Fungsi awal buat bypass blokir autoplay browser
+        function initPlayer() {
+            startOverlay.classList.add('hidden');
+            idleScreen.classList.remove('hidden');
+            connectWebSocket();
+        }
+
+        function connectWebSocket() {
+            // Ganti IP ini otomatis menyesuaikan host tempat dibuka
+            const host = window.location.host;
+            ws = new WebSocket(`ws://${host}/ws?type=player`);
+
+            ws.onopen = () => console.log('✅ STB Terhubung ke Server Karaoke');
+            
+            ws.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                console.log("📩 Perintah dari Boss:", msg);
+
+                if (msg.action === 'PLAY_SONG') {
+                    playSong(msg.url, msg.title);
+                } else if (msg.action === 'PAUSE') {
+                    video.pause();
+                } else if (msg.action === 'RESUME') {
+                    video.play();
+                } else if (msg.action === 'STOP') {
+                    stopPlayer();
+                } else if (msg.action === 'QUEUE_UPDATED') {
+                    // Nanti bisa panggil fungsi update UI antrian di sini
+                    console.log("Antrian ada yang baru!");
+                }
+            };
+
+            ws.onclose = () => {
+                console.log('❌ Koneksi terputus, mencoba reconnect...');
+                setTimeout(connectWebSocket, 3000); // Auto reconnect kalau server restart
+            };
+        }
+
+        function playSong(url, title) {
+            idleScreen.classList.add('hidden');
+            video.classList.remove('hidden');
+            
+            video.src = url;
+            video.play();
+            
+            // Tunjukin judul lagu di pojok kiri bawah
+            currentTitle.innerText = title;
+            nowPlaying.classList.remove('hidden');
+            
+            // Sembunyiin info judul setelah 10 detik biar layar bersih buat nyanyi
+            setTimeout(() => {
+                nowPlaying.classList.add('hidden');
+            }, 10000);
+        }
+
+        function stopPlayer() {
+            video.pause();
+            video.src = "";
+            video.classList.add('hidden');
+            idleScreen.classList.remove('hidden');
+            nowPlaying.classList.add('hidden');
+        }
+
+        // Kalau lagu beres, kasih tau server minta lagu selanjutnya
+        video.addEventListener('ended', () => {
+            stopPlayer();
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ action: 'SONG_ENDED' }));
+            }
+        });
+    </script>
+</body>
+</html>

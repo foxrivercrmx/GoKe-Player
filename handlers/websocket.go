@@ -22,6 +22,8 @@ var (
 	Clients   = make(map[*websocket.Conn]*Client)
 	Broadcast = make(chan map[string]interface{})
 	Mutex     = sync.Mutex{}
+	YTCookiesFile string
+	YTJSRuntime   string
 )
 
 // Fungsi baru untuk ngurus perpindahan antrian
@@ -53,9 +55,18 @@ func ProcessNextSong() {
 			formatStr += "/best" // Fallback kalau kriteria di atas nggak nemu
 
 			log.Println("🔄 [YT EXTRACT] Mengekstrak URL untuk ID:", ytID, "dengan format:", formatStr)
+
+			ytArgs := []string{}
+			if YTCookiesFile != "" {
+				ytArgs = append(ytArgs, "--cookies", YTCookiesFile)
+			}
+			if YTJSRuntime != "" {
+				ytArgs = append(ytArgs, "--js-runtimes", YTJSRuntime)
+			}
+			ytArgs = append(ytArgs, "-g", "-f", formatStr, "https://www.youtube.com/watch?v="+ytID)
 			
 			// Panggil yt-dlp -g (get url)
-			cmd := exec.Command("yt-dlp", "-g", "-f", formatStr, "https://www.youtube.com/watch?v="+ytID)
+			cmd := exec.Command("yt-dlp", ytArgs...)
 			var out bytes.Buffer
 			cmd.Stdout = &out
 			

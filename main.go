@@ -26,6 +26,8 @@ func main() {
 	storageDir := flag.String("storage", "./storage", "Path ke folder penyimpanan video karaoke")
 	dbPath := flag.String("db", "karaoke.db", "Path ke file database SQLite")
 	port := flag.String("port", "3000", "Port server jalan")
+	cookiesPath := flag.String("cookies", "", "Path ke file cookies.txt untuk yt-dlp (opsional)")
+	jsRuntime := flag.String("js-runtimes", "", "Pilihan JS runtime untuk yt-dlp, misal: quickjs (opsional)")
 	flag.Parse() // Wajib dipanggil buat ngebaca inputannya
 
 	// 2. Inisialisasi Database (Kita perlu update InitDB nerima parameter path)
@@ -38,6 +40,8 @@ func main() {
 	}
 
 	handlers.StoragePath = *storageDir
+	handlers.YTCookiesFile = *cookiesPath
+	handlers.YTJSRuntime = *jsRuntime
 
 	// 3. Setup Fiber App
 	app := fiber.New(fiber.Config{
